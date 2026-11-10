@@ -91,7 +91,7 @@ app.post('/order', async (req, res) => {
     try {
         // step 5 start the transaction and insert the orders
         await client.query('begin');
-        const inserted = await client.query("insert into orders user_id, symbol, quantity, price, idempotency_key", [userId, symbol, quantity, price, key]);
+        const inserted = await client.query("insert into orders (user_id, symbol, quantity, price, idempotency_key) values ($1, $2, $3, $4, $5) on conflict (idempotency_key) do nothing returning *", [userId, symbol, quantity, price, key]);
         
         // step 6 if nothing is inserted then rollback and response with existing data
         if (inserted.rows.length === 0) {
