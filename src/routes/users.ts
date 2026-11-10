@@ -3,12 +3,12 @@ import { pool } from "../db";
 import { PG_ERRORS } from "../utils";
 
 export const userRouter = Router();
-userRouter.get('/users', async (req, res) => {
+userRouter.get('/', async (req, res) => {
     const result = await pool.query('select * from users');
     res.json(result.rows);
 })
 
-userRouter.get('/users/:id/orders', async (req, res) => {
+userRouter.get('/:id/orders', async (req, res) => {
     const userId = Number(req.params.id);
     const result = await pool.query(`select * from orders where user_id=$1`, [userId]);
     res.json(result.rows)
@@ -17,7 +17,7 @@ userRouter.get('/users/:id/orders', async (req, res) => {
 
 
 
-userRouter.post('/users/add', async (req, res) => {
+userRouter.post('/add', async (req, res) => {
     const { name } = req.body;
     try {
         const result = await pool.query('insert into users (name) values ($1) returning *', [name]);

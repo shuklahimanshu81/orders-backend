@@ -12,7 +12,7 @@ const createOrderSchema = z.object({
     price: z.number().positive()
 })
 
-ordersRouter.post('/order', async (req, res) => {
+ordersRouter.post('/', async (req, res) => {
     // step 1 check the unique key, if not available in the header return error
     const key = req.header('Idempotency-Key');
     if (!key) {
