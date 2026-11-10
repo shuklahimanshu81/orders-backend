@@ -17,7 +17,7 @@ userRouter.get('/:id/orders', async (req, res) => {
 
 
 
-userRouter.post('/add', async (req, res) => {
+userRouter.post('/', async (req, res) => {
     const { name } = req.body;
     try {
         const result = await pool.query('insert into users (name) values ($1) returning *', [name]);

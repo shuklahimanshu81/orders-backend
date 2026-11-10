@@ -1,6 +1,6 @@
-import {Router} from "express";
-import {z} from "zod";
-import {pool} from "../db";
+import { Router } from "express";
+import { z } from "zod";
+import { pool } from "../db";
 import { PG_ERRORS } from "../utils";
 
 export const ordersRouter = Router();
@@ -32,7 +32,7 @@ ordersRouter.post('/', async (req, res) => {
         // step 5 start the transaction and insert the orders
         await client.query('begin');
         const inserted = await client.query("insert into orders (user_id, symbol, quantity, price, idempotency_key) values ($1, $2, $3, $4, $5) on conflict (idempotency_key) do nothing returning *", [userId, symbol, quantity, price, key]);
-        
+
         // step 6 if nothing is inserted then rollback and response with existing data
         if (inserted.rows.length === 0) {
             await client.query("rollback");
@@ -40,11 +40,25 @@ ordersRouter.post('/', async (req, res) => {
                 "select * from orders where idempotency_key = $1",
                 [key]
             );
-            return res.status(200).json(existing.rows[0]);
+            const order = existing.rows[0];
+
+            const sameRequest =
+                order.user_id === userId &&
+                order.symbol === symbol &&
+                order.quantity === quantity &&
+                Number(order.price) === price;
+
+            if (!sameRequest) {
+                return res.status(409).json({
+                    error: "Idempotency-Key was already used with a different request",
+                });
+            }
+
+            return res.status(200).json(order);
         }
         // step 7 calculate require amount if available in balance then deduct else rollback and return insufficient balance error.  
         const paid = await client.query("update users set balance = balance - ($2::numeric * $3::numeric) where id = $1 and balance >= ($2::numeric * $3::numeric)", [userId, quantity, price]);
-        
+
         if (paid.rowCount === 0) {
             await client.query("rollback");
             return res.status(400).json({ error: "Insufficient Balance" });
@@ -54,7 +68,7 @@ ordersRouter.post('/', async (req, res) => {
         await client.query("commit");
         return res.status(201).json(inserted.rows[0]);
     } catch (error) {
-       // error step : in case of any unprecedented error just rollback whole thing and response with error
+        // error step : in case of any unprecedented error just rollback whole thing and response with error
         await client.query("rollback");
         if (error.code === PG_ERRORS.FOREIGN_KEY_VIOLATION) {
             return res.status(400).json({ error: "User does not exist" });
